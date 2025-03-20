@@ -3,16 +3,13 @@ import {
   Container,
   Typography,
   Grid,
-  Card,
-  CardContent,
-  CardActions,
-  Button,
   Box,
   Pagination,
   CircularProgress,
   Alert,
+  Paper,
 } from '@mui/material';
-import { useNavigate } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import axios from 'axios';
 import BlogPost from '../../components/blog/BlogPost';
 
@@ -34,23 +31,29 @@ interface BlogListResponse {
   number: number;
 }
 
-const BlogList: React.FC = () => {
-  const navigate = useNavigate();
+const MemberBlogList: React.FC = () => {
+  const { memberId } = useParams<{ memberId: string }>();
   const [blogs, setBlogs] = useState<Blog[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [memberName, setMemberName] = useState<string>('');
   const pageSize = 10;
 
   const fetchBlogs = async (pageNumber: number) => {
     try {
       setLoading(true);
       const response = await axios.get<BlogListResponse>(
-        `http://localhost:8080/api/blogs?page=${pageNumber - 1}&size=${pageSize}`
+        `http://localhost:8080/api/blogs/member/${memberId}?page=${pageNumber - 1}&size=${pageSize}`
       );
       setBlogs(response.data.content);
       setTotalPages(response.data.totalPages);
+      
+      // 첫 번째 블로그에서 작성자 이름 가져오기
+      if (response.data.content.length > 0) {
+        setMemberName(response.data.content[0].memberName);
+      }
     } catch (err) {
       if (axios.isAxiosError(err)) {
         setError(err.response?.data?.message || '블로그 목록을 불러오는데 실패했습니다.');
@@ -64,14 +67,10 @@ const BlogList: React.FC = () => {
 
   useEffect(() => {
     fetchBlogs(page);
-  }, [page]);
+  }, [page, memberId]);
 
   const handlePageChange = (event: React.ChangeEvent<unknown>, value: number) => {
     setPage(value);
-  };
-
-  const handleCreateBlog = () => {
-    navigate('/blog/create');
   };
 
   if (loading) {
@@ -92,14 +91,14 @@ const BlogList: React.FC = () => {
 
   return (
     <Container sx={{ mt: 4, mb: 4 }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
-        <Typography variant="h4" component="h1">
-          블로그 목록
+      <Paper sx={{ p: 3, mb: 4 }}>
+        <Typography variant="h4" component="h1" gutterBottom>
+          {memberName}의 블로그
         </Typography>
-        <Button variant="contained" color="primary" onClick={handleCreateBlog}>
-          글쓰기
-        </Button>
-      </Box>
+        <Typography variant="body1" color="text.secondary">
+          총 {blogs.length}개의 게시글
+        </Typography>
+      </Paper>
 
       <Grid container spacing={3}>
         {blogs.map((blog) => (
@@ -122,4 +121,4 @@ const BlogList: React.FC = () => {
   );
 };
 
-export default BlogList; 
+export default MemberBlogList; 
