@@ -15,30 +15,24 @@ import { yupResolver } from '@hookform/resolvers/yup';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 
-interface SignUpFormData {
+interface LoginFormData {
   email: string;
   password: string;
-  confirmPassword: string;
+}
+
+interface LoginResponse {
+  token: string;
+  id: number;
+  email: string;
   name: string;
 }
 
 const schema = yup.object().shape({
   email: yup.string().email('유효한 이메일을 입력해주세요.').required('이메일은 필수입니다.'),
-  password: yup
-    .string()
-    .min(8, '비밀번호는 최소 8자 이상이어야 합니다.')
-    .required('비밀번호는 필수입니다.'),
-  confirmPassword: yup
-    .string()
-    .oneOf([yup.ref('password')], '비밀번호가 일치하지 않습니다.')
-    .required('비밀번호 확인은 필수입니다.'),
-  name: yup
-    .string()
-    .min(2, '이름은 최소 2자 이상이어야 합니다.')
-    .required('이름은 필수입니다.'),
+  password: yup.string().required('비밀번호는 필수입니다.'),
 });
 
-const SignUpForm: React.FC = () => {
+const LoginForm: React.FC = () => {
   const navigate = useNavigate();
   const [snackbar, setSnackbar] = React.useState({
     open: false,
@@ -50,7 +44,7 @@ const SignUpForm: React.FC = () => {
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
-  } = useForm<SignUpFormData>({
+  } = useForm<LoginFormData>({
     resolver: yupResolver(schema),
   });
 
@@ -58,27 +52,34 @@ const SignUpForm: React.FC = () => {
     setSnackbar({ ...snackbar, open: false });
   };
 
-  const onSubmit = async (data: SignUpFormData) => {
+  const onSubmit = async (data: LoginFormData) => {
     try {
-      const response = await axios.post('http://localhost:8080/api/members/signup', {
+      const response = await axios.post<LoginResponse>('http://localhost:8080/api/members/login', {
         email: data.email,
         password: data.password,
-        name: data.name,
       });
+
+      // JWT 토큰을 localStorage에 저장
+      localStorage.setItem('token', response.data.token);
+      localStorage.setItem('user', JSON.stringify({
+        id: response.data.id,
+        email: response.data.email,
+        name: response.data.name,
+      }));
 
       setSnackbar({
         open: true,
-        message: '회원가입 성공! 로그인 페이지로 이동합니다.',
+        message: '로그인 성공! 블로그 페이지로 이동합니다.',
         severity: 'success',
       });
 
       setTimeout(() => {
-        navigate('/login');
+        navigate('/blog');
       }, 1500);
     } catch (error) {
       setSnackbar({
         open: true,
-        message: '회원가입 실패. 다시 시도해주세요.',
+        message: '로그인 실패. 이메일과 비밀번호를 확인해주세요.',
         severity: 'error',
       });
     }
@@ -88,7 +89,7 @@ const SignUpForm: React.FC = () => {
     <Container maxWidth="sm">
       <Box sx={{ mt: 8, mb: 4 }}>
         <Typography variant="h4" component="h1" align="center" gutterBottom>
-          회원가입
+          로그인
         </Typography>
         <form onSubmit={handleSubmit(onSubmit)}>
           <Stack spacing={3}>
@@ -108,21 +109,6 @@ const SignUpForm: React.FC = () => {
               helperText={errors.password?.message}
               {...register('password')}
             />
-            <TextField
-              fullWidth
-              label="비밀번호 확인"
-              type="password"
-              error={!!errors.confirmPassword}
-              helperText={errors.confirmPassword?.message}
-              {...register('confirmPassword')}
-            />
-            <TextField
-              fullWidth
-              label="이름"
-              error={!!errors.name}
-              helperText={errors.name?.message}
-              {...register('name')}
-            />
             <Button
               type="submit"
               variant="contained"
@@ -130,7 +116,7 @@ const SignUpForm: React.FC = () => {
               fullWidth
               disabled={isSubmitting}
             >
-              회원가입
+              로그인
             </Button>
           </Stack>
         </form>
@@ -152,4 +138,4 @@ const SignUpForm: React.FC = () => {
   );
 };
 
-export default SignUpForm; 
+export default LoginForm; 
