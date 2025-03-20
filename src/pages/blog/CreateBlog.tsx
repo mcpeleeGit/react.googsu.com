@@ -1,55 +1,77 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
-  Container,
-  Typography,
-  TextField,
-  Button,
   Box,
+  Button,
+  TextField,
+  Stack,
+  Typography,
+  Container,
   Alert,
-  Paper,
+  Snackbar,
 } from '@mui/material';
-import { useNavigate } from 'react-router-dom';
+import { useForm } from 'react-hook-form';
+import * as yup from 'yup';
+import { yupResolver } from '@hookform/resolvers/yup';
 import axios from 'axios';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface BlogFormData {
   title: string;
   content: string;
 }
 
+const schema = yup.object().shape({
+  title: yup.string().required('제목은 필수입니다.'),
+  content: yup.string().required('내용은 필수입니다.'),
+});
+
 const CreateBlog: React.FC = () => {
   const navigate = useNavigate();
-  const [formData, setFormData] = useState<BlogFormData>({
-    title: '',
-    content: '',
+  const { token } = useAuth();
+  const [snackbar, setSnackbar] = React.useState({
+    open: false,
+    message: '',
+    severity: 'success' as 'success' | 'error',
   });
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+  } = useForm<BlogFormData>({
+    resolver: yupResolver(schema),
+  });
+
+  const handleCloseSnackbar = () => {
+    setSnackbar({ ...snackbar, open: false });
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setError(null);
+  const onSubmit = async (data: BlogFormData) => {
+    if (!token) {
+      setSnackbar({
+        open: true,
+        message: '로그인이 필요합니다.',
+        severity: 'error',
+      });
+      setTimeout(() => {
+        navigate('/login');
+      }, 1500);
+      return;
+    }
 
     try {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        setError('로그인이 필요합니다.');
-        return;
-      }
+      console.log('Token:', token);
+      console.log('Request Headers:', {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      });
 
       const response = await axios.post(
         'http://localhost:8080/api/blogs',
         {
-          title: formData.title,
-          content: formData.content,
+          title: data.title,
+          content: data.content,
         },
         {
           headers: {
@@ -59,70 +81,89 @@ const CreateBlog: React.FC = () => {
         }
       );
 
-      if (response.status === 200) {
+      console.log('Response:', response);
+
+      setSnackbar({
+        open: true,
+        message: '블로그 포스트가 성공적으로 생성되었습니다.',
+        severity: 'success',
+      });
+
+      setTimeout(() => {
         navigate('/blog');
-      }
-    } catch (err) {
-      if (axios.isAxiosError(err)) {
-        setError(err.response?.data?.message || '블로그 작성에 실패했습니다. 다시 시도해주세요.');
+      }, 1500);
+    } catch (error) {
+      console.error('Error:', error);
+      
+      if (axios.isAxiosError(error)) {
+        console.error('Error response:', error.response?.data);
+        console.error('Error status:', error.response?.status);
+        console.error('Error headers:', error.response?.headers);
+        
+        setSnackbar({
+          open: true,
+          message: error.response?.data?.message || '블로그 포스트 생성에 실패했습니다.',
+          severity: 'error',
+        });
       } else {
-        setError('블로그 작성에 실패했습니다. 다시 시도해주세요.');
+        setSnackbar({
+          open: true,
+          message: '블로그 포스트 생성에 실패했습니다.',
+          severity: 'error',
+        });
       }
-    } finally {
-      setLoading(false);
     }
   };
 
   return (
-    <Container maxWidth="md" sx={{ mt: 4, mb: 4 }}>
-      <Paper sx={{ p: 3 }}>
-        <Typography variant="h4" component="h1" gutterBottom>
-          새 블로그 작성
+    <Container maxWidth="md">
+      <Box sx={{ mt: 8, mb: 4 }}>
+        <Typography variant="h4" component="h1" align="center" gutterBottom>
+          새 블로그 포스트 작성
         </Typography>
-        {error && (
-          <Alert severity="error" sx={{ mb: 2 }}>
-            {error}
-          </Alert>
-        )}
-        <form onSubmit={handleSubmit}>
-          <TextField
-            fullWidth
-            label="제목"
-            name="title"
-            value={formData.title}
-            onChange={handleChange}
-            margin="normal"
-            required
-          />
-          <TextField
-            fullWidth
-            label="내용"
-            name="content"
-            value={formData.content}
-            onChange={handleChange}
-            margin="normal"
-            required
-            multiline
-            rows={10}
-          />
-          <Box sx={{ mt: 3, display: 'flex', gap: 2, justifyContent: 'flex-end' }}>
-            <Button
-              variant="outlined"
-              onClick={() => navigate('/blog')}
-              disabled={loading}
-            >
-              취소
-            </Button>
+        <form onSubmit={handleSubmit(onSubmit)}>
+          <Stack spacing={3}>
+            <TextField
+              fullWidth
+              label="제목"
+              error={!!errors.title}
+              helperText={errors.title?.message}
+              {...register('title')}
+            />
+            <TextField
+              fullWidth
+              label="내용"
+              multiline
+              rows={10}
+              error={!!errors.content}
+              helperText={errors.content?.message}
+              {...register('content')}
+            />
             <Button
               type="submit"
               variant="contained"
-              disabled={loading || !formData.title || !formData.content}
+              color="primary"
+              fullWidth
+              disabled={isSubmitting}
             >
               작성하기
             </Button>
-          </Box>
+          </Stack>
         </form>
-      </Paper>
+      </Box>
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={6000}
+        onClose={handleCloseSnackbar}
+      >
+        <Alert
+          onClose={handleCloseSnackbar}
+          severity={snackbar.severity}
+          sx={{ width: '100%' }}
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </Container>
   );
 };

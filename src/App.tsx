@@ -1,10 +1,11 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import { ThemeProvider, createTheme } from '@mui/material/styles';
-import CssBaseline from '@mui/material/CssBaseline';
+import { ThemeProvider, createTheme, CssBaseline } from '@mui/material';
+import { AuthProvider } from './contexts/AuthContext';
+import Header from './components/layout/Header';
 import Home from './pages/Home';
-import SignUpPage from './pages/auth/SignUp';
-import LoginPage from './pages/auth/Login';
+import SignUp from './pages/auth/SignUp';
+import Login from './pages/auth/Login';
 import BlogList from './pages/blog/BlogList';
 import CreateBlog from './pages/blog/CreateBlog';
 import EditBlog from './pages/blog/EditBlog';
@@ -13,7 +14,6 @@ import MemberBlogList from './pages/blog/MemberBlogList';
 
 const theme = createTheme({
   palette: {
-    mode: 'light',
     primary: {
       main: '#1976d2',
     },
@@ -23,24 +23,27 @@ const theme = createTheme({
   },
 });
 
-function App() {
+const App: React.FC = () => {
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      <Router>
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/signup" element={<SignUpPage />} />
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/blog" element={<BlogList />} />
-          <Route path="/blog/create" element={<CreateBlog />} />
-          <Route path="/blog/edit/:id" element={<EditBlog />} />
-          <Route path="/blog/:id" element={<BlogDetail />} />
-          <Route path="/blog/member/:memberId" element={<MemberBlogList />} />
-        </Routes>
-      </Router>
+      <AuthProvider>
+        <Router>
+          <Header />
+          <Routes>
+            <Route path="/" element={<Home />} />
+            <Route path="/signup" element={<SignUp />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/blog" element={<BlogList />} />
+            <Route path="/blog/create" element={<CreateBlog />} />
+            <Route path="/blog/edit/:id" element={<EditBlog />} />
+            <Route path="/blog/:id" element={<BlogDetail />} />
+            <Route path="/blog/member/:memberId" element={<MemberBlogList />} />
+          </Routes>
+        </Router>
+      </AuthProvider>
     </ThemeProvider>
   );
-}
+};
 
 export default App; 

@@ -14,6 +14,7 @@ import * as yup from 'yup';
 import { yupResolver } from '@hookform/resolvers/yup';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface LoginFormData {
   email: string;
@@ -34,6 +35,7 @@ const schema = yup.object().shape({
 
 const LoginForm: React.FC = () => {
   const navigate = useNavigate();
+  const { login } = useAuth();
   const [snackbar, setSnackbar] = React.useState({
     open: false,
     message: '',
@@ -59,13 +61,15 @@ const LoginForm: React.FC = () => {
         password: data.password,
       });
 
-      // JWT 토큰을 localStorage에 저장
-      localStorage.setItem('token', response.data.token);
-      localStorage.setItem('user', JSON.stringify({
-        id: response.data.id,
-        email: response.data.email,
-        name: response.data.name,
-      }));
+      // 로그인 성공 시 AuthContext를 통해 사용자 정보와 토큰 저장
+      login(
+        {
+          id: response.data.id,
+          email: response.data.email,
+          name: response.data.name,
+        },
+        response.data.token
+      );
 
       setSnackbar({
         open: true,
